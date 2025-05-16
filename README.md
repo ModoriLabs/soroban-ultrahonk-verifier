@@ -15,3 +15,9 @@ This repository uses the recommended structure for a Soroban project:
 └── README.md
 ```
 
+## Compilation
+Simply run the following command :
+```
+soroban contract build
+```
+
