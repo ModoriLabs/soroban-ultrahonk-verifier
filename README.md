@@ -20,4 +20,8 @@ Simply run the following command :
 ```
 soroban contract build
 ```
-
+## Test 
+Simply run the following command :
+```
+cargo test 
+```
