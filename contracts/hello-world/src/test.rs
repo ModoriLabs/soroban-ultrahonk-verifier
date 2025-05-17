@@ -6,7 +6,8 @@ use soroban_sdk::{
 };  
   
 use crate::{BN254Contract, BN254ContractClient};  
-  
+
+
 #[test]
 fn test_generate_g1_point() {
     let env = Env::default();
