@@ -18,13 +18,14 @@ use soroban_sdk::{contract, contractimpl, Bytes, Env};
 #[contract]
 pub struct BN254Contract;
 
-fn serialize_g1(point: &G1) -> alloc::vec::Vec<u8> {
-    let mut temp_vec = alloc::vec::Vec::new();
-    point
-        .into_affine()
-        .serialize_with_mode(&mut temp_vec, Compress::No)
-        .unwrap();
-    temp_vec
+fn serialize_g1(point: &G1, env: &Env) -> Bytes {   
+    let mut temp_vec = alloc::vec::Vec::new();  
+    point  
+        .into_affine()  
+        .serialize_with_mode(&mut temp_vec, Compress::No)  
+        .unwrap();  
+      
+    Bytes::from_slice(env, &temp_vec)  
 }
 
 fn deserialize_g1(bytes: &[u8]) -> Result<G1, SerializationError> {
@@ -44,16 +45,18 @@ fn deserialize_g2(bytes: &[u8]) -> Result<G2, SerializationError> {
     Ok(point.into())
 }
 
-// fn serialize_fr(env: &Env, scalar: &Fr) -> Bytes {
-//     let mut temp_vec = alloc::vec::Vec::new();
-//     scalar.serialize_with_mode(&mut temp_vec, Compress::No).unwrap();
+fn serialize_fr(env: &Env, scalar: &Fr) -> Bytes {
+    let mut temp_vec = alloc::vec::Vec::new();
+    scalar.serialize_with_mode(&mut temp_vec, Compress::No).unwrap();
 
-//     Bytes::from_slice(env, &temp_vec)
-// }
+    Bytes::from_slice(env, &temp_vec)
+}
 
 fn deserialize_fr(bytes: &[u8]) -> Result<Fr, SerializationError> {
     Fr::deserialize_with_mode(bytes, Compress::No, Validate::Yes)
 }
+
+
 
 #[contractimpl]
 impl BN254Contract {
@@ -73,8 +76,8 @@ impl BN254Contract {
         let g1_gen = G1::generator();
         let point = g1_gen.mul(scalar_fr);
 
-        let serialized = serialize_g1(&point);
-        Bytes::from_slice(&env, &serialized)
+         serialize_g1(&point,&env)
+      
     }
 
     pub fn scalar_mul_g1(env: Env, point_bytes: Bytes, scalar_bytes: Bytes) -> Bytes {
@@ -102,8 +105,8 @@ impl BN254Contract {
 
         let result = point.mul(scalar);
 
-        let serialized = serialize_g1(&result);
-        Bytes::from_slice(&env, &serialized)
+       serialize_g1(&result,&env)
+   
     }
 
     pub fn add_g1_points(env: Env, point1_bytes: Bytes, point2_bytes: Bytes) -> Bytes {
@@ -131,8 +134,8 @@ impl BN254Contract {
 
         let result = point1 + point2;
 
-        let serialized = serialize_g1(&result);
-        Bytes::from_slice(&env, &serialized)
+        serialize_g1(&result,&env)
+       
     }
 
     pub fn perform_pairing(env: Env, g1_bytes: Bytes, g2_bytes: Bytes) -> Bytes {
