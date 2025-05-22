@@ -283,6 +283,11 @@ impl Transcript {
         self.buffer.extend_from_slice(&bytes);
     }
 
+    pub fn append_u32(&mut self, value: u32) {  
+        let bytes = value.to_be_bytes();  
+        self.append_bytes(&bytes);  
+    }  
+  
     pub fn append_u256(&mut self, value: &U256) {
         let bytes: Bytes = value.to_be_bytes(); 
         let mut arr = [0u8; 32];
@@ -290,12 +295,119 @@ impl Transcript {
         self.buffer.extend_from_slice(&arr);
     }
 
+    fn append_g1_point(&mut self, point: &G1Point) {  
+        let mut x_bytes = [0u8; 32];  
+        let mut y_bytes = [0u8; 32];  
+        point.x.serialize_compressed(&mut x_bytes[..]).unwrap();  
+        point.y.serialize_compressed(&mut y_bytes[..]).unwrap();  
+          
+        self.append_bytes(&y_bytes); 
+        self.append_bytes(&x_bytes); 
+    }  
+
     pub fn get_challenge(&mut self) -> BytesN<32> {
         let crypto = self.env.crypto();
         let hash = crypto.keccak256(&self.buffer);
         self.buffer = Bytes::new(&self.env);
         hash.to_bytes()
     }
+
+    pub fn generate_initial_challenge(&mut self, circuit_size: u32, num_inputs: u32) -> Fr {  
+        self.append_u32(circuit_size);  
+        self.append_u32(num_inputs);  
+          
+        let challenge_bytes = self.get_challenge();  
+        Fr::from_be_bytes_mod_order(&challenge_bytes.to_array())  
+    }  
+
+      
+    //generate challenges 
+    pub fn generate_eta_challenge(&mut self, public_inputs: &[Fr], w1: &G1Point, w2: &G1Point, w3: &G1Point) -> (Fr, Fr, Fr) {  
+  
+        for input in public_inputs {  
+            let mut bytes = [0u8; 32];  
+            input.serialize_compressed(&mut bytes[..]).unwrap();  
+            self.append_bytes(&bytes);  
+        }  
+          
+        self.append_g1_point(w1);  
+        self.append_g1_point(w2);  
+        self.append_g1_point(w3);  
+          
+        let challenge_bytes = self.get_challenge();  
+        let eta = Fr::from_be_bytes_mod_order(&challenge_bytes.to_array());  
+        let eta_sqr = eta * eta;  
+        let eta_cube = eta_sqr * eta;  
+          
+        (eta, eta_sqr, eta_cube)  
+    } 
+
+    pub fn generate_beta_challenge(&mut self, w4: &G1Point, s: &G1Point) -> Fr {  
+        self.append_g1_point(w4);  
+        self.append_g1_point(s);  
+          
+        let challenge_bytes = self.get_challenge();  
+        Fr::from_be_bytes_mod_order(&challenge_bytes.to_array())  
+    }  
+
+    pub fn generate_gamma_challenge(&mut self) -> Fr {  
+        self.append_bytes(&[0x01]);  
+          
+        let challenge_bytes = self.get_challenge();  
+        Fr::from_be_bytes_mod_order(&challenge_bytes.to_array())  
+    }  
+    
+    pub fn generate_alpha_challenge(&mut self, z: &G1Point, z_lookup: &G1Point) -> (Fr, Fr, Fr, Fr) {  
+        self.append_g1_point(z);  
+        self.append_g1_point(z_lookup);  
+          
+        let challenge_bytes = self.get_challenge();  
+        let alpha = Fr::from_be_bytes_mod_order(&challenge_bytes.to_array());  
+        let alpha_sqr = alpha * alpha;  
+        let alpha_cube = alpha_sqr * alpha;  
+        let alpha_quad = alpha_cube * alpha;  
+          
+        (alpha, alpha_sqr, alpha_cube, alpha_quad)  
+    }  
+
+    pub fn generate_zeta_challenge(&mut self, t1: &G1Point, t2: &G1Point, t3: &G1Point, t4: &G1Point) -> Fr {  
+        self.append_g1_point(t1);  
+        self.append_g1_point(t2);  
+        self.append_g1_point(t3);  
+        self.append_g1_point(t4);  
+          
+        let challenge_bytes = self.get_challenge();  
+        Fr::from_be_bytes_mod_order(&challenge_bytes.to_array())  
+    }  
+
+    pub fn generate_nu_challenges(&mut self, quotient_eval: Fr, proof_data: &[u8]) -> [Fr; 31] {  
+
+        let mut bytes = [0u8; 32];  
+        quotient_eval.serialize_compressed(&mut bytes[..]).unwrap();  
+        self.append_bytes(&bytes);  
+        
+        self.append_bytes(proof_data);  
+          
+        let mut challenges = [Fr::zero(); 31];  
+        let base_challenge_bytes = self.get_challenge();  
+        let base_challenge = Fr::from_be_bytes_mod_order(&base_challenge_bytes.to_array());  
+          
+        challenges[0] = base_challenge;  
+          
+        for i in 1..31 {  
+            let mut hasher_input = [0u8; 33];  
+            base_challenge.serialize_compressed(&mut hasher_input[..32]).unwrap();  
+            hasher_input[32] = i as u8;  
+              
+            let crypto = self.env.crypto();  
+            let hash = crypto.keccak256(&Bytes::from_slice(&self.env, &hasher_input));  
+            challenges[i] = Fr::from_be_bytes_mod_order(&hash.to_array());  
+        }  
+          
+        challenges  
+    }  
+
+    
 }
 
 
