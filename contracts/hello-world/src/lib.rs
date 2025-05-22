@@ -407,6 +407,58 @@ impl Transcript {
         challenges  
     }  
 
+    //Generate sumcheck challenges 
+     pub fn generate_sumcheck_challenges(&mut self, proof: &Proof) -> [Fr; CONST_PROOF_SIZE_LOG_N] {  
+        let mut sumcheck_challenges = [Fr::zero(); CONST_PROOF_SIZE_LOG_N];  
+          
+        for i in 0..CONST_PROOF_SIZE_LOG_N {  
+    
+            let mut univariate_chal = Bytes::new(&self.env);  
+               
+            let prev_challenge_bytes = self.get_challenge();  
+            let prev_challenge = Fr::from_be_bytes_mod_order(&prev_challenge_bytes.to_array());  
+              
+            let mut challenge_bytes = [0u8; 32];  
+            prev_challenge.serialize_compressed(&mut challenge_bytes[..]).unwrap();  
+            univariate_chal.extend_from_slice(&challenge_bytes);  
+              
+            for j in 0..BATCHED_RELATION_PARTIAL_LENGTH {  
+                let mut coeff_bytes = [0u8; 32];  
+                proof.sumcheck_univariates[i][j].serialize_compressed(&mut coeff_bytes[..]).unwrap();  
+                univariate_chal.extend_from_slice(&coeff_bytes);  
+            }  
+              
+            let crypto = self.env.crypto();  
+            let hash = crypto.keccak256(&univariate_chal);  
+            let challenge = Fr::from_be_bytes_mod_order(&hash.to_array());  
+                
+            sumcheck_challenges[i] = self.split_challenge(challenge).0;  
+              
+            self.buffer = Bytes::new(&self.env);  
+            self.append_bytes(&hash.to_array());  
+        }  
+          
+        sumcheck_challenges  
+    }  
+
+    fn split_challenge(&self, challenge: Fr) -> (Fr, Fr) {  
+        let challenge_bytes = {  
+            let mut bytes = [0u8; 32];  
+            challenge.serialize_compressed(&mut bytes[..]).unwrap();  
+            bytes  
+        };  
+           
+        let mut lo_bytes = [0u8; 32];  
+        let mut hi_bytes = [0u8; 32];  
+          
+        lo_bytes[16..32].copy_from_slice(&challenge_bytes[16..32]);  
+        hi_bytes[16..32].copy_from_slice(&challenge_bytes[0..16]);  
+          
+        let first = Fr::from_be_bytes_mod_order(&lo_bytes);  
+        let second = Fr::from_be_bytes_mod_order(&hi_bytes);  
+          
+        (first, second)  
+    }  
     
 }
 
