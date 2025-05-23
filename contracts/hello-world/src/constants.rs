@@ -1,0 +1,10 @@
+pub const N: u32 = 131072;  
+pub const LOG_N: u32 = 17;  
+pub const NUMBER_OF_PUBLIC_INPUTS: u32 = 4;  
+pub const CONST_PROOF_SIZE_LOG_N: usize = 28;  
+pub const NUMBER_OF_SUBRELATIONS: usize = 26;  
+pub const BATCHED_RELATION_PARTIAL_LENGTH: usize = 8;  
+pub const NUMBER_OF_ENTITIES: usize = 40;  
+pub const NUMBER_UNSHIFTED: usize = 35;  
+pub const NUMBER_TO_BE_SHIFTED: usize = 5;  
+pub const NUMBER_OF_ALPHAS: usize = 25;
